@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Uni Assistent +</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  </head>
+  <body>
+    <header class="main-header">
+      <div class="header-container">
+        <div class="logo">
+          <img src="images/logo.png" alt="사이트로고" class="logo-img" />
+          <h1>My Uni Assistent +</h1>
+        </div>
+        <nav class="nav-menu">
+          <button id="my-page-toggle" class="btn-text">My page</button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container main-layout">
+      <main class="content-area">
+        <section class="hero-section">
+          <p>
+            📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를
+            만들어줍니다!
+          </p>
+        </section>
+
+        <!-- 1. PDF 업로드 섹션 -->
+        <section id="upload-section" class="card">
+          <h2>📑 PDF 업로드</h2>
+          <div id="drop-zone" class="drop-zone">
+            <p>PDF 파일을 여기로 드래그하거나 클릭하여 선택하세요.</p>
+            <input
+              type="file"
+              id="file-input"
+              accept="application/pdf"
+              hidden
+            />
+          </div>
+          <div id="file-info" class="file-info hidden">
+            <span id="file-name">파일명.pdf</span>
+            <button id="extract-btn" class="btn primary">
+              텍스트 추출 시작
+            </button>
+          </div>
+        </section>
+
+        <!-- 2. 처리 로딩 표시 -->
+        <section id="status-section" class="status-section hidden">
+          <div class="spinner"></div>
+          <p id="status-message">내용을 분석하고 있습니다...</p>
+        </section>
+
+        <!-- 3. 결과 표시 섹션 -->
+        <section id="result-section" class="hidden">
+          <div class="tab-container">
+            <button class="tab-btn active" data-tab="summary">
+              📝 핵심 요약
+            </button>
+            <button class="tab-btn" data-tab="quiz">❓ 학습 퀴즈</button>
+          </div>
+
+          <div id="summary-content" class="tab-content card active">
+            <div id="summary-text" class="markdown-body">
+              <!-- AI가 생성한 요약 내용이 들어갈 자리 -->
+            </div>
+          </div>
+
+          <div id="quiz-content" class="tab-content card">
+            <div id="quiz-list">
+              <!-- AI가 생성한 퀴즈가 들어갈 자리 -->
+            </div>
+            <button id="submit-quiz" class="btn primary hidden">
+              채점하기
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <aside id="my-page-sidebar" class="sidebar card">
+        <h2>My page</h2>
+        <div class="user-profile">
+          <div class="avatar">
+            <img
+              src="images/avatar.jpg"
+              alt="프로필 이미지"
+              class="avatar-img"
+            />
+          </div>
+          <div class="info">
+            <p class="name">Testu쨩님</p>
+            <p class="email">user@example.com</p>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat-item">
+            <span>완료한 퀴즈</span>
+            <span class="count">0</span>
+          </div>
+          <div class="stat-item">
+            <span>학습 리포트</span>
+            <span class="count">0</span>
+          </div>
+        </div>
+        <div class="recent-files">
+          <h3>최근 학습한 파일</h3>
+          <ul id="history-list">
+            <li class="empty-msg">기록이 없습니다.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
