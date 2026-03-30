@@ -143,13 +143,14 @@ async function processWithAI(text) {
 function showResults(data) {
   statusSection.classList.add('hidden');
   resultSection.classList.remove('hidden');
+  resultSection.scrollIntoView({ behavior: 'smooth' });
 
   summaryContent.innerHTML = data.summary;
 
   quizList.innerHTML = data.quiz
     .map(
       (q, idx) => `
-        <div class="quiz-item">
+        <div class="quiz-item" data-answer="${q.answer}">
             <p><strong>Q${idx + 1}. ${q.question}</strong></p>
             <div class="quiz-options">
                 ${q.options
@@ -163,10 +164,45 @@ function showResults(data) {
                   )
                   .join('')}
             </div>
+            <p class="quiz-feedback hidden"></p>
         </div>
     `,
     )
     .join('');
+
+  // 퀴즈 옵션 클릭 이벤트 추가
+  const quizItems = document.querySelectorAll('.quiz-item');
+  quizItems.forEach((item) => {
+    const options = item.querySelectorAll('input[type="radio"]');
+    const correctAnswer = parseInt(item.getAttribute('data-answer'));
+    const feedback = item.querySelector('.quiz-feedback');
+
+    options.forEach((option) => {
+      option.addEventListener('change', () => {
+        // 이미 선택된 경우 무시 (한 번만 선택 가능하게 하려면)
+        // 모든 옵션 비활성화
+        options.forEach((opt) => (opt.disabled = true));
+
+        const selectedAnswer = parseInt(option.value);
+        const parentLabel = option.parentElement;
+
+        if (selectedAnswer === correctAnswer) {
+          parentLabel.classList.add('correct');
+          feedback.textContent = '✅ 정답입니다!';
+          feedback.style.color = '#155724';
+        } else {
+          parentLabel.classList.add('wrong');
+          // 정답 표시
+          options[correctAnswer].parentElement.classList.add('correct');
+          feedback.textContent = `❌ 오답입니다. (정답: ${
+            options[correctAnswer].nextElementSibling.textContent
+          })`;
+          feedback.style.color = '#721c24';
+        }
+        feedback.classList.remove('hidden');
+      });
+    });
+  });
 }
 
 tabButtons.forEach((btn) => {
