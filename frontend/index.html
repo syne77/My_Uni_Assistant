@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css" />
     <!-- PDF.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Supabase Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <header class="main-header">
@@ -91,19 +93,35 @@
 
       <aside id="my-page-sidebar" class="sidebar card">
         <h2 data-i18n="myPageTitle">My page</h2>
-        <div class="user-profile">
-          <div class="avatar">
-            <img
-              src="images/avatar.jpg"
-              alt="프로필 이미지"
-              class="avatar-img"
-            />
-          </div>
-          <div class="info">
-            <p class="name">Testu쨩님</p>
-            <p class="email">user@example.com</p>
-          </div>
+        
+        <!-- 로그인 전 화면 -->
+        <div id="auth-logged-out" class="auth-container">
+          <p class="auth-msg">로그인하여 학습 데이터를 안전하게 보관하세요.</p>
+          <button id="google-login-btn" class="btn-google">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+            <span>Google로 로그인</span>
+          </button>
         </div>
+
+        <!-- 로그인 후 화면 (기존 유저 프로필 섹션 수정) -->
+        <div id="auth-logged-in" class="auth-container hidden">
+          <div class="user-profile">
+            <div class="avatar">
+              <img
+                id="user-avatar"
+                src="images/avatar.jpg"
+                alt="프로필 이미지"
+                class="avatar-img"
+              />
+            </div>
+            <div class="info">
+              <p id="user-name" class="name">사용자님</p>
+              <p id="user-email" class="email">user@example.com</p>
+            </div>
+          </div>
+          <button id="logout-btn" class="btn-text logout">Logout</button>
+        </div>
+
         <div class="stats">
           <div class="stat-item">
             <span data-i18n="statQuizzes">완료한 퀴즈</span>

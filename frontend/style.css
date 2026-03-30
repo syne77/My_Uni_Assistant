@@ -193,13 +193,60 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.auth-container {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f6f0d7;
+}
+
+.auth-msg {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0.7rem;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-google:hover {
+  background-color: #f8f9fa;
+}
+
+.btn-google img {
+  width: 20px;
+  height: 20px;
+}
+
+.logout {
+  width: 100%;
+  margin-top: 1rem;
+  background-color: #f8f9fa !important;
+  color: #888 !important;
+  border-color: #eee !important;
+}
+
+.logout:hover {
+  background-color: #ffebee !important;
+  color: #d32f2f !important;
+  border-color: #ffcdd2 !important;
+}
+
 .user-profile {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #f6f0d7;
 }
 
 .avatar {

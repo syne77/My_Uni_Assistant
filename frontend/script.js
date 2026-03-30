@@ -2,6 +2,36 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
+// Supabase 설정 (백엔드에서 가져와 초기화)
+let _supabase = null;
+let currentUser = null;
+
+async function initSupabase() {
+  try {
+    const response = await fetch('/api/config');
+    const config = await response.json();
+    
+    console.log('Backend Config received:', { 
+      hasUrl: !!config.supabaseUrl, 
+      hasKey: !!config.supabaseAnonKey 
+    });
+
+    if (config.supabaseUrl && config.supabaseAnonKey) {
+      _supabase = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+      console.log('Supabase 초기화 완료');
+      
+      // 세션 변화 감지
+      _supabase.auth.onAuthStateChange((event, session) => {
+        handleAuthStateChange(event, session);
+      });
+    } else {
+      console.error('Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.');
+    }
+  } catch (err) {
+    console.error('설정 정보를 가져오는데 실패했습니다:', err);
+  }
+}
+
 // DOM 요소 선택
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -25,6 +55,15 @@ const completedQuizCount = document.querySelector(
 const studyReportCount = document.querySelector('.stat-item:last-child .count');
 const newStudyBtn = document.getElementById('new-study-btn');
 const languageSelect = document.getElementById('language-select');
+
+// 인증 관련 요소 선택
+const loginBtn = document.getElementById('google-login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const loggedOutView = document.getElementById('auth-logged-out');
+const loggedInView = document.getElementById('auth-logged-in');
+const userNameDisplay = document.getElementById('user-name');
+const userEmailDisplay = document.getElementById('user-email');
+const userAvatarDisplay = document.getElementById('user-avatar');
 
 const HISTORY_KEY = 'ai_study_history';
 const LANG_KEY = 'app_language';
@@ -105,7 +144,8 @@ const translations = {
 let currentLang = localStorage.getItem(LANG_KEY) || 'ko';
 
 // 0. 초기 히스토리 및 언어 로드
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initSupabase();
   languageSelect.value = currentLang;
   updateUI();
   renderHistoryList();
@@ -129,7 +169,64 @@ function updateUI() {
   });
 }
 
-// 새로운 학습 시작 버튼 클릭 이벤트
+// --- 인증 관련 로직 ---
+
+// 인증 상태 변화 처리
+function handleAuthStateChange(event, session) {
+  if (session && session.user) {
+    currentUser = session.user;
+    updateAuthUI(true);
+    console.log('Logged in as:', currentUser.email);
+  } else {
+    currentUser = null;
+    updateAuthUI(false);
+    console.log('Logged out');
+  }
+}
+
+function updateAuthUI(isLoggedIn) {
+  if (isLoggedIn) {
+    loggedOutView.classList.add('hidden');
+    loggedInView.classList.remove('hidden');
+    
+    const profile = currentUser.user_metadata;
+    userNameDisplay.textContent = profile.full_name || currentUser.email;
+    userEmailDisplay.textContent = currentUser.email;
+    if (profile.avatar_url) {
+      userAvatarDisplay.src = profile.avatar_url;
+    }
+  } else {
+    loggedOutView.classList.remove('hidden');
+    loggedInView.classList.add('hidden');
+  }
+}
+
+// 구글 로그인 실행
+async function signInWithGoogle() {
+  if (!_supabase) {
+    alert('Supabase가 아직 초기화되지 않았거나 설정에 문제가 있습니다.');
+    return;
+  }
+  const { error } = await _supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+  if (error) console.error('Error logging in:', error.message);
+}
+
+// 로그아웃 실행
+async function signOut() {
+  const { error } = await _supabase.auth.signOut();
+  if (error) console.error('Error logging out:', error.message);
+}
+
+// 이벤트 리스너 등록
+loginBtn.addEventListener('click', signInWithGoogle);
+logoutBtn.addEventListener('click', signOut);
+
+// --- 새로운 학습 시작 버튼 클릭 이벤트 ---
 newStudyBtn.addEventListener('click', initNewStudy);
 
 function initNewStudy() {
@@ -368,32 +465,91 @@ function showResults(data) {
 }
 
 // 5. 히스토리 관리 로직
-function saveToHistory(fileName, data) {
-  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-  const newItem = {
-    id: Date.now(),
-    fileName,
-    date: new Date().toLocaleString(
-      currentLang === 'ko' ? 'ko-KR' : currentLang === 'en' ? 'en-US' : 'ja-JP',
+async function saveToHistory(fileName, data) {
+  // 1. 로그인된 유저라면 Supabase DB에 저장
+  if (_supabase && currentUser) {
+    const { error } = await _supabase.from('study_records').insert([
       {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+        user_id: currentUser.id,
+        file_name: fileName,
+        summary: data.summary,
+        quiz_data: data.quiz,
       },
-    ),
-    data,
-  };
+    ]);
 
-  history.unshift(newItem); // 최신순 정렬을 위해 앞에 추가
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
+    if (error) {
+      console.error('DB 저장 실패:', error.message);
+    }
+  } else {
+    // 2. 로그인 안 된 유저라면 기존 로컬스토리지 방식 유지
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const newItem = {
+      id: Date.now(),
+      fileName,
+      date: new Date().toLocaleString(
+        currentLang === 'ko'
+          ? 'ko-KR'
+          : currentLang === 'en'
+            ? 'en-US'
+            : 'ja-JP',
+        {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+      ),
+      data,
+    };
+
+    history.unshift(newItem); // 최신순 정렬을 위해 앞에 추가
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
+  }
 
   renderHistoryList();
   updateStats();
 }
 
-function renderHistoryList() {
-  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+async function renderHistoryList() {
+  let history = [];
+
+  // 1. 로그인 상태: DB에서 데이터 가져오기
+  if (_supabase && currentUser) {
+    const { data, error } = await _supabase
+      .from('study_records')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('DB 불러오기 실패:', error.message);
+    } else {
+      history = data.map((item) => ({
+        id: item.id,
+        fileName: item.file_name,
+        date: new Date(item.created_at).toLocaleString(
+          currentLang === 'ko'
+            ? 'ko-KR'
+            : currentLang === 'en'
+              ? 'en-US'
+              : 'ja-JP',
+          {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          },
+        ),
+        data: {
+          summary: item.summary,
+          quiz: item.quiz_data,
+        },
+      }));
+    }
+  } else {
+    // 2. 비로그인 상태: 로컬스토리지에서 가져오기
+    history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  }
 
   if (history.length === 0) {
     historyList.innerHTML = `<li class="empty-msg">${translations[currentLang].emptyHistory}</li>`;
@@ -418,12 +574,12 @@ function renderHistoryList() {
   document.querySelectorAll('.history-item').forEach((el) => {
     el.addEventListener('click', (e) => {
       if (e.target.classList.contains('btn-delete')) {
-        deleteHistory(parseInt(el.dataset.id));
+        deleteHistory(el.dataset.id);
         return;
       }
 
-      const id = parseInt(el.dataset.id);
-      const item = history.find((h) => h.id === id);
+      const id = el.dataset.id;
+      const item = history.find((h) => String(h.id) === String(id));
       if (item) {
         // 업로드 섹션 숨기고 결과 표시
         uploadSection.classList.add('hidden');
@@ -433,21 +589,45 @@ function renderHistoryList() {
   });
 }
 
-function deleteHistory(id) {
-  let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-  history = history.filter((item) => item.id !== id);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+async function deleteHistory(id) {
+  // 1. 로그인 상태: DB에서 삭제
+  if (_supabase && currentUser) {
+    const { error } = await _supabase
+      .from('study_records')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('DB 삭제 실패:', error.message);
+      return;
+    }
+  } else {
+    // 2. 비로그인 상태: 로컬스토리지에서 삭제
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    history = history.filter((item) => String(item.id) !== String(id));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }
+
   renderHistoryList();
   updateStats();
 }
 
-function updateStats() {
-  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-  studyReportCount.textContent = history.length;
+async function updateStats() {
+  let count = 0;
 
-  // 푼 문제 수 (예시: 저장된 히스토리 수 * 10 중 일부를 푼 것으로 계산하거나 별도 저장 가능)
-  // 여기서는 단순히 시각적 피드백을 위해 히스토리 기반으로 표시합니다.
-  completedQuizCount.textContent = history.length * 10;
+  if (_supabase && currentUser) {
+    const { count: dbCount, error } = await _supabase
+      .from('study_records')
+      .select('*', { count: 'exact', head: true });
+
+    if (!error) count = dbCount;
+  } else {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    count = history.length;
+  }
+
+  studyReportCount.textContent = count;
+  completedQuizCount.textContent = count * 10;
 }
 
 tabButtons.forEach((btn) => {
