@@ -17,6 +17,17 @@ const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const myPageToggle = document.getElementById('my-page-toggle');
 const myPageSidebar = document.getElementById('my-page-sidebar');
+const historyList = document.getElementById('history-list');
+const completedQuizCount = document.querySelector('.stat-item:first-child .count');
+const studyReportCount = document.querySelector('.stat-item:last-child .count');
+
+const HISTORY_KEY = 'ai_study_history';
+
+// 0. 초기 히스토리 로드
+document.addEventListener('DOMContentLoaded', () => {
+  renderHistoryList();
+  updateStats();
+});
 
 // 마이페이지 토글 (모바일용 등)
 myPageToggle.addEventListener('click', () => {
@@ -130,6 +141,10 @@ async function processWithAI(text) {
     }
 
     const result = await response.json();
+    
+    // 히스토리에 저장
+    saveToHistory(selectedFile.name, result);
+    
     showResults(result);
   } catch (error) {
     console.error('AI 처리 오류:', error);
@@ -200,9 +215,83 @@ function showResults(data) {
           feedback.style.color = '#721c24';
         }
         feedback.classList.remove('hidden');
+        updateStats();
       });
     });
   });
+}
+
+// 5. 히스토리 관리 로직
+function saveToHistory(fileName, data) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const newItem = {
+    id: Date.now(),
+    fileName,
+    date: new Date().toLocaleString('ko-KR', { 
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+    }),
+    data
+  };
+  
+  history.unshift(newItem); // 최신순 정렬을 위해 앞에 추가
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
+  
+  renderHistoryList();
+  updateStats();
+}
+
+function renderHistoryList() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  
+  if (history.length === 0) {
+    historyList.innerHTML = '<li class="empty-msg">기록이 없습니다.</li>';
+    return;
+  }
+
+  historyList.innerHTML = history.map(item => `
+    <li class="history-item" data-id="${item.id}">
+      <div class="history-info">
+        <span class="history-name">${item.fileName}</span>
+        <span class="history-date">${item.date}</span>
+      </div>
+      <button class="btn-delete" title="삭제">&times;</button>
+    </li>
+  `).join('');
+
+  // 클릭 이벤트 등록
+  document.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-delete')) {
+        deleteHistory(parseInt(el.dataset.id));
+        return;
+      }
+      
+      const id = parseInt(el.dataset.id);
+      const item = history.find(h => h.id === id);
+      if (item) {
+        // 업로드 섹션 숨기고 결과 표시
+        document.getElementById('upload-section').classList.add('hidden');
+        showResults(item.data);
+      }
+    });
+  });
+}
+
+function deleteHistory(id) {
+  let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  history = history.filter(item => item.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistoryList();
+  updateStats();
+}
+
+function updateStats() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  studyReportCount.textContent = history.length;
+  
+  // 푼 문제 수 (예시: 저장된 히스토리 수 * 10 중 일부를 푼 것으로 계산하거나 별도 저장 가능)
+  // 여기서는 단순히 시각적 피드백을 위해 히스토리 기반으로 표시합니다.
+  completedQuizCount.textContent = history.length * 10;
 }
 
 tabButtons.forEach((btn) => {
