@@ -77,6 +77,27 @@ body {
   font-family: 'NanumSquareNeo-EB', sans-serif;
 }
 
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lang-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background-color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'NanumSquareNeo', sans-serif;
+}
+
+.lang-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
 .btn-text {
   background: white;
   border: 1px solid var(--primary-color);
@@ -365,8 +386,21 @@ body {
   color: white;
 }
 
+.btn.secondary {
+  background-color: white;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+}
+
 .btn:hover {
   opacity: 0.9;
+}
+
+.action-area {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  padding-bottom: 2rem;
 }
 
 /* Tabs */

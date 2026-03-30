@@ -5,6 +5,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 // DOM 요소 선택
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
+const uploadSection = document.getElementById('upload-section');
 const fileInfo = document.getElementById('file-info');
 const fileNameDisplay = document.getElementById('file-name');
 const extractBtn = document.getElementById('extract-btn');
@@ -20,14 +21,130 @@ const myPageSidebar = document.getElementById('my-page-sidebar');
 const historyList = document.getElementById('history-list');
 const completedQuizCount = document.querySelector('.stat-item:first-child .count');
 const studyReportCount = document.querySelector('.stat-item:last-child .count');
+const newStudyBtn = document.getElementById('new-study-btn');
+const languageSelect = document.getElementById('language-select');
 
 const HISTORY_KEY = 'ai_study_history';
+const LANG_KEY = 'app_language';
 
-// 0. 초기 히스토리 로드
+const translations = {
+  ko: {
+    myPageBtn: 'My page',
+    heroText: '📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를 만들어줍니다!',
+    uploadTitle: '📑 PDF 업로드',
+    dropZoneText: 'PDF 파일을 여기로 드래그하거나 클릭하여 선택하세요.',
+    extractBtn: '텍스트 추출 시작',
+    statusAnalyzing: '내용을 분석하고 있습니다...',
+    statusExtracting: 'PDF에서 텍스트를 추출하는 중입니다...',
+    statusAIGenerating: 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...',
+    tabSummary: '📝 핵심 요약',
+    tabQuiz: '❓ 학습 퀴즈',
+    newStudyBtn: '✨ 새로운 학습 시작하기',
+    myPageTitle: 'My page',
+    statQuizzes: '완료한 퀴즈',
+    statReports: '학습 리포트',
+    recentFilesTitle: '최근 학습한 파일',
+    emptyHistory: '기록이 없습니다.',
+    errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
+    errorExtract: 'PDF에서 텍스트를 추출하는 데 실패했습니다.',
+    errorAI: 'AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.',
+  },
+  en: {
+    myPageBtn: 'My page',
+    heroText: '📚 Upload your study materials and AI will summarize and create quizzes for you!',
+    uploadTitle: '📑 PDF Upload',
+    dropZoneText: 'Drag and drop PDF here or click to select.',
+    extractBtn: 'Start Extraction',
+    statusAnalyzing: 'Analyzing content...',
+    statusExtracting: 'Extracting text from PDF...',
+    statusAIGenerating: 'AI is summarizing and creating quizzes...',
+    tabSummary: '📝 Summary',
+    tabQuiz: '❓ Learning Quiz',
+    newStudyBtn: '✨ Start New Study',
+    myPageTitle: 'My page',
+    statQuizzes: 'Completed Quizzes',
+    statReports: 'Study Reports',
+    recentFilesTitle: 'Recent Files',
+    emptyHistory: 'No history found.',
+    errorPdf: 'Only PDF files are allowed.',
+    errorExtract: 'Failed to extract text from PDF.',
+    errorAI: 'AI analysis failed. Please check the backend server or try again later.',
+  },
+  jp: {
+    myPageBtn: 'マイページ',
+    heroText: '📚 授業資料をアップロードすると、AIが要約とクイズを作成してくれます！',
+    uploadTitle: '📑 PDFアップロード',
+    dropZoneText: 'PDFファイルをここにドラッグするか、クリックして選択してください。',
+    extractBtn: 'テキスト抽出開始',
+    statusAnalyzing: '内容を分析しています...',
+    statusExtracting: 'PDFからテキストを抽出しています...',
+    statusAIGenerating: 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...',
+    tabSummary: '📝 要約',
+    tabQuiz: '❓ 学習クイズ',
+    newStudyBtn: '✨ 新しい学習を開始する',
+    myPageTitle: 'マイページ',
+    statQuizzes: '完了したクイズ',
+    statReports: '学習レポート',
+    recentFilesTitle: '最近学習したファイル',
+    emptyHistory: '履歴がありません.',
+    errorPdf: 'PDFファイルのみアップロード可能です。',
+    errorExtract: 'PDFからのテキスト抽出に失敗しました。',
+    errorAI: 'AI分析に失敗しました。サーバーを確認するか、後でもう一度お試しください。',
+  }
+};
+
+let currentLang = localStorage.getItem(LANG_KEY) || 'ko';
+
+// 0. 초기 히스토리 및 언어 로드
 document.addEventListener('DOMContentLoaded', () => {
+  languageSelect.value = currentLang;
+  updateUI();
   renderHistoryList();
   updateStats();
 });
+
+// 언어 선택 이벤트
+languageSelect.addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  localStorage.setItem(LANG_KEY, currentLang);
+  updateUI();
+});
+
+function updateUI() {
+  const t = translations[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) {
+      el.textContent = t[key];
+    }
+  });
+}
+
+// 새로운 학습 시작 버튼 클릭 이벤트
+newStudyBtn.addEventListener('click', initNewStudy);
+
+function initNewStudy() {
+  // 데이터 변수 초기화
+  selectedFile = null;
+  extractedText = '';
+  fileInput.value = ''; // 파일 input 초기화
+  
+  // UI 요소 초기화
+  resultSection.classList.add('hidden');
+  uploadSection.classList.remove('hidden');
+  dropZone.classList.remove('hidden');
+  fileInfo.classList.add('hidden');
+  extractBtn.disabled = false;
+  
+  // 첫 번째 탭(핵심 요약)으로 초기화
+  tabButtons.forEach(b => b.classList.remove('active'));
+  tabContents.forEach(c => c.classList.remove('active'));
+  tabButtons[0].classList.add('active');
+  tabContents[0].classList.add('active');
+  
+  // 페이지 상단으로 스크롤
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 // 마이페이지 토글 (모바일용 등)
 myPageToggle.addEventListener('click', () => {
@@ -65,7 +182,7 @@ fileInput.addEventListener('change', (e) => {
 
 function handleFileSelect(file) {
   if (file.type !== 'application/pdf') {
-    alert('PDF 파일만 업로드할 수 있습니다.');
+    alert(translations[currentLang].errorPdf);
     return;
   }
   selectedFile = file;
@@ -80,7 +197,7 @@ extractBtn.addEventListener('click', async () => {
 
   statusSection.classList.remove('hidden');
   extractBtn.disabled = true;
-  statusMessage.textContent = 'PDF에서 텍스트를 추출하는 중입니다...';
+  statusMessage.textContent = translations[currentLang].statusExtracting;
 
   try {
     const arrayBuffer = await selectedFile.arrayBuffer();
@@ -101,7 +218,7 @@ extractBtn.addEventListener('click', async () => {
     processWithAI(extractedText);
   } catch (error) {
     console.error('PDF 추출 오류:', error);
-    alert('PDF에서 텍스트를 추출하는 데 실패했습니다.');
+    alert(translations[currentLang].errorExtract);
     statusSection.classList.add('hidden');
     extractBtn.disabled = false;
   }
@@ -109,11 +226,19 @@ extractBtn.addEventListener('click', async () => {
 
 // 3. AI 연동 (백엔드 서버 프록시 사용)
 async function processWithAI(text) {
-  statusMessage.textContent = 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...';
+  statusMessage.textContent = translations[currentLang].statusAIGenerating;
+
+  const targetLang = {
+    ko: '한국어 (Korean)',
+    en: '영어 (English)',
+    jp: '일본어 (Japanese)'
+  }[currentLang];
 
   try {
     const prompt = `
             다음은 PDF에서 추출된 수업 자료 내용입니다. 
+            반드시 모든 내용을 **${targetLang}**로 작성해주세요.
+            
             1. 내용을 핵심 위주로 깔끔하게 요약해주세요 (HTML 태그를 사용하여 구조화).
             2. 내용과 관련된 객관식 퀴즈 10개를 만들어주세요.
             
@@ -148,7 +273,7 @@ async function processWithAI(text) {
     showResults(result);
   } catch (error) {
     console.error('AI 처리 오류:', error);
-    alert('AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.');
+    alert(translations[currentLang].errorAI);
     statusSection.classList.add('hidden');
     extractBtn.disabled = false;
   }
@@ -201,17 +326,20 @@ function showResults(data) {
         const selectedAnswer = parseInt(option.value);
         const parentLabel = option.parentElement;
 
-        if (selectedAnswer === correctAnswer) {
+        const isCorrect = selectedAnswer === correctAnswer;
+        
+        if (isCorrect) {
           parentLabel.classList.add('correct');
-          feedback.textContent = '✅ 정답입니다!';
+          feedback.textContent = currentLang === 'ko' ? '✅ 정답입니다!' : 
+                                currentLang === 'en' ? '✅ Correct!' : '✅ 正解です！';
           feedback.style.color = '#155724';
         } else {
           parentLabel.classList.add('wrong');
           // 정답 표시
           options[correctAnswer].parentElement.classList.add('correct');
-          feedback.textContent = `❌ 오답입니다. (정답: ${
-            options[correctAnswer].nextElementSibling.textContent
-          })`;
+          const correctText = options[correctAnswer].nextElementSibling.textContent;
+          feedback.textContent = currentLang === 'ko' ? `❌ 오답입니다. (정답: ${correctText})` : 
+                                currentLang === 'en' ? `❌ Wrong. (Answer: ${correctText})` : `❌ 不正解です。(正解: ${correctText})`;
           feedback.style.color = '#721c24';
         }
         feedback.classList.remove('hidden');
@@ -227,7 +355,7 @@ function saveToHistory(fileName, data) {
   const newItem = {
     id: Date.now(),
     fileName,
-    date: new Date().toLocaleString('ko-KR', { 
+    date: new Date().toLocaleString(currentLang === 'ko' ? 'ko-KR' : currentLang === 'en' ? 'en-US' : 'ja-JP', { 
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
     }),
     data
@@ -244,7 +372,7 @@ function renderHistoryList() {
   const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
   
   if (history.length === 0) {
-    historyList.innerHTML = '<li class="empty-msg">기록이 없습니다.</li>';
+    historyList.innerHTML = `<li class="empty-msg">${translations[currentLang].emptyHistory}</li>`;
     return;
   }
 
@@ -254,7 +382,7 @@ function renderHistoryList() {
         <span class="history-name">${item.fileName}</span>
         <span class="history-date">${item.date}</span>
       </div>
-      <button class="btn-delete" title="삭제">&times;</button>
+      <button class="btn-delete" title="Delete">&times;</button>
     </li>
   `).join('');
 
@@ -270,7 +398,7 @@ function renderHistoryList() {
       const item = history.find(h => h.id === id);
       if (item) {
         // 업로드 섹션 숨기고 결과 표시
-        document.getElementById('upload-section').classList.add('hidden');
+        uploadSection.classList.add('hidden');
         showResults(item.data);
       }
     });
