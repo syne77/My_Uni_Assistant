@@ -41,17 +41,21 @@
 - [x] **Google Cloud Console:** OAuth 클라이언트 ID 생성 및 승인된 리디렉션 URI 등록
 - [x] **Supabase Auth:** Google 공급자 활성화 및 클라이언트 ID/비밀번호 입력
 - [x] **클라이언트 SDK:** 프론트엔드에 `@supabase/supabase-js` 연동
-- [x] **환경 변수 관리:** `.env.local`을 통해 `URL`, `Anon Key` 보안 관리
+- [x] **환경 변수 관리:** `.env.local` 연동 및 백엔드 프록시 설정 (버그 수정 완료)
 
 #### 6-2. 데이터베이스 스키마 설계 및 UI 구현
 - [x] **테이블 설계 및 SQL 작성:** `profiles`, `study_records` 테이블 및 RLS 정책 수립
 - [x] **로그인 UI 구현:** Google 로그인/로그아웃 버튼 및 세션 상태 UI 반영
 
 #### 6-3. 기능 마이그레이션 및 고도화
-- [ ] **저장 로직 전환:** `localStorage` 저장 로직을 Supabase `insert` API로 교체
-- [ ] **불러오기 로직 전환:** `renderHistoryList`에서 DB 데이터를 `select` 하도록 수정
-- [ ] **데이터 마이그레이션:** 기존 `localStorage` 데이터를 로그인 시 DB로 업로드 제안
-- [ ] **통계 데이터 연동:** DB 카운트 기반으로 마이페이지 통계 실시간 반영
+- [x] **저장 로직 전환:** `localStorage` 저장 로직을 Supabase `insert` API로 교체
+- [x] **불러오기 로직 전환:** `renderHistoryList`에서 DB 데이터를 `select` 하도록 수정
+- [x] **삭제 로직 전환:** DB 레코드 삭제 기능 구현
+- [x] **통계 데이터 연동:** DB 카운트 기반으로 마이페이지 통계 실시간 반영
+- [ ] **보안 강화 및 상태 동기화 (진행 중):**
+    - [ ] 로그아웃 시 즉시 UI 히스토리 목록 초기화 및 `localStorage` 모드로 전환
+    - [ ] 인증 상태 변경(`onAuthStateChange`) 시 모든 학습 데이터 로직 재실행 강제
+    - [ ] 로그인 유저와 비로그인 유저의 데이터 세션 완전 분리
 
 ### 7단계: 서버 배포 및 운영 (Render)
 - [ ] **Render 배포 설정:** `render.com`을 통한 Express 서버 배포

@@ -10,22 +10,27 @@ async function initSupabase() {
   try {
     const response = await fetch('/api/config');
     const config = await response.json();
-    
-    console.log('Backend Config received:', { 
-      hasUrl: !!config.supabaseUrl, 
-      hasKey: !!config.supabaseAnonKey 
+
+    console.log('Backend Config received:', {
+      hasUrl: !!config.supabaseUrl,
+      hasKey: !!config.supabaseAnonKey,
     });
 
     if (config.supabaseUrl && config.supabaseAnonKey) {
-      _supabase = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+      _supabase = supabase.createClient(
+        config.supabaseUrl,
+        config.supabaseAnonKey,
+      );
       console.log('Supabase 초기화 완료');
-      
+
       // 세션 변화 감지
       _supabase.auth.onAuthStateChange((event, session) => {
         handleAuthStateChange(event, session);
       });
     } else {
-      console.error('Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.');
+      console.error(
+        'Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.',
+      );
     }
   } catch (err) {
     console.error('설정 정보를 가져오는데 실패했습니다:', err);
@@ -87,6 +92,8 @@ const translations = {
     statReports: '학습 리포트',
     recentFilesTitle: '최근 학습한 파일',
     emptyHistory: '기록이 없습니다.',
+    authMsg: '로그인하여 학습 데이터를 안전하게 보관하세요.',
+    googleLogin: 'Google로 로그인',
     errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
     errorExtract: 'PDF에서 텍스트를 추출하는 데 실패했습니다.',
     errorAI:
@@ -110,6 +117,8 @@ const translations = {
     statReports: 'Study Reports',
     recentFilesTitle: 'Recent Files',
     emptyHistory: 'No history found.',
+    authMsg: 'Log in to keep your study data safe.',
+    googleLogin: 'Sign in with Google',
     errorPdf: 'Only PDF files are allowed.',
     errorExtract: 'Failed to extract text from PDF.',
     errorAI:
@@ -125,7 +134,7 @@ const translations = {
     extractBtn: 'テキスト抽出開始',
     statusAnalyzing: '内容を分析しています...',
     statusExtracting: 'PDFからテキストを抽出しています...',
-    statusAIGenerating: 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...',
+    statusAIGenerating: 'AIが内容を要約し、クイズを作成しています...',
     tabSummary: '📝 要約',
     tabQuiz: '❓ 学習クイズ',
     newStudyBtn: '✨ 新しい学習を開始する',
@@ -134,6 +143,8 @@ const translations = {
     statReports: '学習レポート',
     recentFilesTitle: '最近学習したファイル',
     emptyHistory: '履歴がありません.',
+    authMsg: 'ログインして学習データを安全に保管しましょう。',
+    googleLogin: 'Googleでログイン',
     errorPdf: 'PDFファイルのみアップロード可能です。',
     errorExtract: 'PDFからのテキスト抽出に失敗しました。',
     errorAI:
@@ -182,13 +193,17 @@ function handleAuthStateChange(event, session) {
     updateAuthUI(false);
     console.log('Logged out');
   }
+
+  // 로그인/로그아웃 시 히스토리 목록과 통계를 즉시 다시 불러옵니다.
+  renderHistoryList();
+  updateStats();
 }
 
 function updateAuthUI(isLoggedIn) {
   if (isLoggedIn) {
     loggedOutView.classList.add('hidden');
     loggedInView.classList.remove('hidden');
-    
+
     const profile = currentUser.user_metadata;
     userNameDisplay.textContent = profile.full_name || currentUser.email;
     userEmailDisplay.textContent = currentUser.email;
@@ -198,9 +213,13 @@ function updateAuthUI(isLoggedIn) {
   } else {
     loggedOutView.classList.remove('hidden');
     loggedInView.classList.add('hidden');
+
+    // 로그아웃 시 프로필 정보 초기화
+    userNameDisplay.textContent = '사용자님';
+    userEmailDisplay.textContent = 'user@example.com';
+    userAvatarDisplay.src = 'images/avatar.jpg';
   }
 }
-
 // 구글 로그인 실행
 async function signInWithGoogle() {
   if (!_supabase) {
@@ -210,8 +229,8 @@ async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin
-    }
+      redirectTo: window.location.origin,
+    },
   });
   if (error) console.error('Error logging in:', error.message);
 }
@@ -512,6 +531,7 @@ async function saveToHistory(fileName, data) {
 
 async function renderHistoryList() {
   let history = [];
+  historyList.innerHTML = ''; // 기존 목록 초기화
 
   // 1. 로그인 상태: DB에서 데이터 가져오기
   if (_supabase && currentUser) {
