@@ -48,7 +48,7 @@ app.post('/api/analyze', async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,17 +59,21 @@ app.post('/api/analyze', async (req, res) => {
     );
 
     const data = await response.json();
-    console.log('Gemini response:', data);
+    console.log('Gemini response received');
 
     if (data.error) {
+      console.error('Gemini Error:', data.error.message);
       return res.status(400).json({ error: data.error.message });
     }
 
     const aiResponseText = data.candidates[0].content.parts[0].text;
 
-    // JSON 추출 로직 (프론트에서 하던 것과 동일)
-    const jsonString = aiResponseText.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(jsonString);
+    // JSON 추출 로직 강화
+    const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('AI 응답에서 유효한 JSON을 찾을 수 없습니다.');
+    }
+    const result = JSON.parse(jsonMatch[0]);
 
     res.json(result);
   } catch (error) {
