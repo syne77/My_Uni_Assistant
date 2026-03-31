@@ -2,7 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env.local') });
+const fs = require('fs');
+
+// 로컬 환경(.env.local)에서만 dotenv 로드, 프로덕션은 시스템 환경변수 사용
+const envPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+} else {
+  require('dotenv').config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,11 +21,14 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 app.use(cors());
 app.use(express.json());
 
-// 프론트엔드용 설정 전달 API (보안을 위해 Anon Key만 전달)
+// 프론트엔드용 설정 전달 API
 app.get('/api/config', (req, res) => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.warn('Warning: Supabase credentials missing in environment.');
+  }
   res.json({
-    supabaseUrl: SUPABASE_URL,
-    supabaseAnonKey: SUPABASE_ANON_KEY
+    supabaseUrl: SUPABASE_URL || '',
+    supabaseAnonKey: SUPABASE_ANON_KEY || ''
   });
 });
 
