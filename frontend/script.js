@@ -8,7 +8,7 @@ let currentUser = null;
 
 async function initSupabase() {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('https://my-uni-assistant.onrender.com');
     const config = await response.json();
 
     console.log('Backend Config received:', {
@@ -380,11 +380,14 @@ async function processWithAI(text) {
             ${text.substring(0, 10000)} 
         `;
 
-    const response = await fetch('http://localhost:3000/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
+    const response = await fetch(
+      'https://my-uni-assistant.onrender.com/api/analyze',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      },
+    );
 
     if (!response.ok) {
       throw new Error('서버 분석 중 오류가 발생했습니다.');
