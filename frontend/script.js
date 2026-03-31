@@ -8,7 +8,9 @@ let currentUser = null;
 
 async function initSupabase() {
   try {
-    const response = await fetch('https://my-uni-assistant.onrender.com');
+    const response = await fetch(
+      'https://my-uni-assistant.onrender.com/api/config',
+    );
     const config = await response.json();
 
     console.log('Backend Config received:', {
