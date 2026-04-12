@@ -8,31 +8,24 @@ let currentUser = null;
 
 async function initSupabase() {
   try {
-    const response = await fetch(
-      'https://my-uni-assistant.onrender.com/api/config',
-    );
+    const response = await fetch('/api/config');
     const config = await response.json();
-
-    console.log('Backend Config received:', {
-      hasUrl: !!config.supabaseUrl,
-      hasKey: !!config.supabaseAnonKey,
+    
+    console.log('Backend Config received:', { 
+      hasUrl: !!config.supabaseUrl, 
+      hasKey: !!config.supabaseAnonKey 
     });
 
     if (config.supabaseUrl && config.supabaseAnonKey) {
-      _supabase = supabase.createClient(
-        config.supabaseUrl,
-        config.supabaseAnonKey,
-      );
+      _supabase = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
       console.log('Supabase 초기화 완료');
-
+      
       // 세션 변화 감지
       _supabase.auth.onAuthStateChange((event, session) => {
         handleAuthStateChange(event, session);
       });
     } else {
-      console.error(
-        'Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.',
-      );
+      console.error('Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.');
     }
   } catch (err) {
     console.error('설정 정보를 가져오는데 실패했습니다:', err);
@@ -61,6 +54,8 @@ const completedQuizCount = document.querySelector(
 );
 const studyReportCount = document.querySelector('.stat-item:last-child .count');
 const newStudyBtn = document.getElementById('new-study-btn');
+const retryQuizBtn = document.getElementById('retry-quiz-btn');
+const quizActionArea = document.getElementById('quiz-action-area');
 const languageSelect = document.getElementById('language-select');
 
 // 인증 관련 요소 선택
@@ -78,8 +73,7 @@ const LANG_KEY = 'app_language';
 const translations = {
   ko: {
     myPageBtn: '마이 페이지',
-    heroText:
-      '📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를 만들어줍니다!',
+    heroText: '📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를 만들어줍니다!',
     uploadTitle: '📑 PDF 업로드',
     dropZoneText: 'PDF 파일을 여기로 드래그하거나 클릭하여 선택하세요.',
     extractBtn: '텍스트 추출 시작',
@@ -89,6 +83,7 @@ const translations = {
     tabSummary: '📝 핵심 요약',
     tabQuiz: '❓ 학습 퀴즈',
     newStudyBtn: '✨ 새로운 학습 시작하기',
+    retryQuizBtn: '🔄 다시 풀기',
     myPageTitle: '마이 페이지',
     statQuizzes: '완료한 퀴즈',
     statReports: '학습 리포트',
@@ -98,13 +93,11 @@ const translations = {
     googleLogin: 'Google로 로그인',
     errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
     errorExtract: 'PDF에서 텍스트를 추출하는 데 실패했습니다.',
-    errorAI:
-      'AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.',
+    errorAI: 'AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.',
   },
   en: {
     myPageBtn: 'My page',
-    heroText:
-      '📚 Upload your study materials and AI will summarize and create quizzes for you!',
+    heroText: '📚 Upload your study materials and AI will summarize and create quizzes for you!',
     uploadTitle: '📑 PDF Upload',
     dropZoneText: 'Drag and drop PDF here or click to select.',
     extractBtn: 'Start Extraction',
@@ -114,6 +107,7 @@ const translations = {
     tabSummary: '📝 Summary',
     tabQuiz: '❓ Learning Quiz',
     newStudyBtn: '✨ Start New Study',
+    retryQuizBtn: '🔄 Retry Quiz',
     myPageTitle: 'My page',
     statQuizzes: 'Completed Quizzes',
     statReports: 'Study Reports',
@@ -123,35 +117,32 @@ const translations = {
     googleLogin: 'Sign in with Google',
     errorPdf: 'Only PDF files are allowed.',
     errorExtract: 'Failed to extract text from PDF.',
-    errorAI:
-      'AI analysis failed. Please check the backend server or try again later.',
+    errorAI: 'AI analysis failed. Please check the backend server or try again later.',
   },
   jp: {
     myPageBtn: 'マイページ',
-    heroText:
-      '📚 授業資料をアップロードすると、AIが要約とクイズを作成してくれます！',
+    heroText: '📚 授業資料をアップロードすると、AIが要約とクイズを作成してくれます！',
     uploadTitle: '📑 PDFアップロード',
-    dropZoneText:
-      'PDFファイルをここにドラッグするか、クリックして選択してください。',
-    extractBtn: 'テキスト抽出開始',
+    dropZoneText: 'PDFファイルをここにドラッグするか、クリックして選択してください。',
+    extractBtn: 'テキスト 추출 시작',
     statusAnalyzing: '内容を分析しています...',
-    statusExtracting: 'PDFからテキストを抽出しています...',
-    statusAIGenerating: 'AIが内容を要約し、クイズを作成しています...',
+    statusExtracting: 'PDFからテキスト를 추출하고 있습니다...',
+    statusAIGenerating: 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...',
     tabSummary: '📝 要約',
-    tabQuiz: '❓ 学習クイズ',
+    tabQuiz: '❓ 학습 퀴즈',
     newStudyBtn: '✨ 新しい学習を開始する',
-    myPageTitle: 'マイページ',
+    retryQuizBtn: '🔄 解き直す',
+    myPageTitle: '마이 페이지',
     statQuizzes: '完了したクイズ',
-    statReports: '学習レポート',
-    recentFilesTitle: '最近学習したファイル',
-    emptyHistory: '履歴がありません.',
-    authMsg: 'ログインして学習データを安全に保管しましょう。',
+    statReports: '학습 리포트',
+    recentFilesTitle: '최근 학습한 파일',
+    emptyHistory: '기록이 없습니다.',
+    authMsg: 'ログインして学習データを安全에 보관하세요.',
     googleLogin: 'Googleでログイン',
-    errorPdf: 'PDFファイルのみアップロード可能です。',
-    errorExtract: 'PDFからのテキスト抽出に失敗しました。',
-    errorAI:
-      'AI分析に失敗しました。サーバーを確認するか、後でもう一度お試しください。',
-  },
+    errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
+    errorExtract: 'PDFからの텍스트 추출에 실패했습니다.',
+    errorAI: 'AI分析에 실패했습니다. サーバーを確認するか、後でもう一度お試しください。',
+  }
 };
 
 let currentLang = localStorage.getItem(LANG_KEY) || 'ko';
@@ -231,8 +222,8 @@ async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
-    },
+      redirectTo: window.location.origin
+    }
   });
   if (error) console.error('Error logging in:', error.message);
 }
@@ -407,51 +398,60 @@ async function processWithAI(text) {
 }
 
 // 4. 결과 출력 및 탭 전환
-function showResults(data) {
+function showResults(data, recordId = null) {
   statusSection.classList.add('hidden');
   resultSection.classList.remove('hidden');
   resultSection.scrollIntoView({ behavior: 'smooth' });
+  quizActionArea.classList.remove('hidden');
 
   summaryContent.innerHTML = data.summary;
 
   quizList.innerHTML = data.quiz
     .map(
       (q, idx) => `
-        <div class="quiz-item" data-answer="${q.answer}">
+        <div class="quiz-item" data-answer="${q.answer}" data-index="${idx}">
             <p><strong>Q${idx + 1}. ${q.question}</strong></p>
             <div class="quiz-options">
                 ${q.options
                   .map(
                     (opt, optIdx) => `
-                    <label class="quiz-option">
-                        <input type="radio" name="quiz-${idx}" value="${optIdx}">
+                    <label class="quiz-option ${q.userSelected !== undefined && optIdx === q.userSelected ? (optIdx === q.answer ? 'correct' : 'wrong') : ''} ${q.userSelected !== undefined && optIdx === q.answer ? 'correct' : ''}">
+                        <input type="radio" name="quiz-${idx}" value="${optIdx}" ${q.userSelected !== undefined ? 'disabled' : ''} ${q.userSelected === optIdx ? 'checked' : ''}>
                         <span>${opt}</span>
                     </label>
                 `,
                   )
                   .join('')}
             </div>
-            <p class="quiz-feedback hidden"></p>
+            <p class="quiz-feedback ${q.userSelected !== undefined ? '' : 'hidden'}">
+              ${q.userSelected !== undefined ? (q.userSelected === q.answer ? (currentLang === 'ko' ? '✅ 정답입니다!' : currentLang === 'en' ? '✅ Correct!' : '✅ 正解です！') : (currentLang === 'ko' ? `❌ 오답입니다. (정답: ${q.options[q.answer]})` : currentLang === 'en' ? `❌ Wrong. (Answer: ${q.options[q.answer]})` : `❌ 不正解です。(正解: ${q.options[q.answer]})`)) : ''}
+            </p>
         </div>
     `,
     )
     .join('');
 
+  // 다시 풀기 버튼 이벤트 (현재 보여지는 데이터 기준)
+  retryQuizBtn.onclick = () => retryQuiz(data, recordId);
+
   // 퀴즈 옵션 클릭 이벤트 추가
   const quizItems = document.querySelectorAll('.quiz-item');
   quizItems.forEach((item) => {
     const options = item.querySelectorAll('input[type="radio"]');
+    const questionIdx = parseInt(item.dataset.index);
     const correctAnswer = parseInt(item.getAttribute('data-answer'));
     const feedback = item.querySelector('.quiz-feedback');
 
     options.forEach((option) => {
-      option.addEventListener('change', () => {
-        // 이미 선택된 경우 무시 (한 번만 선택 가능하게 하려면)
+      option.addEventListener('change', async () => {
         // 모든 옵션 비활성화
         options.forEach((opt) => (opt.disabled = true));
 
         const selectedAnswer = parseInt(option.value);
         const parentLabel = option.parentElement;
+
+        // 데이터 상태 업데이트
+        data.quiz[questionIdx].userSelected = selectedAnswer;
 
         const isCorrect = selectedAnswer === correctAnswer;
 
@@ -466,7 +466,6 @@ function showResults(data) {
           feedback.style.color = '#155724';
         } else {
           parentLabel.classList.add('wrong');
-          // 정답 표시
           options[correctAnswer].parentElement.classList.add('correct');
           const correctText =
             options[correctAnswer].nextElementSibling.textContent;
@@ -479,27 +478,65 @@ function showResults(data) {
           feedback.style.color = '#721c24';
         }
         feedback.classList.remove('hidden');
+        
+        // 실시간 저장
+        await updateQuizProgress(data, recordId);
         updateStats();
       });
     });
   });
 }
 
+// 퀴즈 진행 상황 저장 (개별 답변 시)
+async function updateQuizProgress(data, recordId) {
+  if (_supabase && currentUser && recordId) {
+    // DB 업데이트
+    await _supabase
+      .from('study_records')
+      .update({ quiz_data: data.quiz })
+      .eq('id', recordId);
+  } else if (!currentUser) {
+    // 로컬스토리지 업데이트
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    // 현재 세션에서 생성된 최신 항목(또는 ID 매칭 항목) 찾기
+    // 간단히 하기 위해 saveToHistory에서 data를 직접 업데이트하므로 여기선 전체 렌더링 시점에 이미 반영됨
+  }
+}
+
+// 퀴즈 다시 풀기
+async function retryQuiz(data, recordId) {
+  // 모든 userSelected 초기화
+  data.quiz.forEach(q => delete q.userSelected);
+  
+  if (_supabase && currentUser && recordId) {
+    await _supabase
+      .from('study_records')
+      .update({ quiz_data: data.quiz })
+      .eq('id', recordId);
+  }
+  
+  // UI 다시 그리기
+  showResults(data, recordId);
+}
+
 // 5. 히스토리 관리 로직
 async function saveToHistory(fileName, data) {
   // 1. 로그인된 유저라면 Supabase DB에 저장
   if (_supabase && currentUser) {
-    const { error } = await _supabase.from('study_records').insert([
+    const { data: inserted, error } = await _supabase.from('study_records').insert([
       {
         user_id: currentUser.id,
         file_name: fileName,
         summary: data.summary,
         quiz_data: data.quiz,
       },
-    ]);
+    ]).select();
 
     if (error) {
       console.error('DB 저장 실패:', error.message);
+    } else {
+      // 새로 생성된 recordId를 전달하기 위해 재호출 가능
+      showResults(data, inserted[0].id);
     }
   } else {
     // 2. 로그인 안 된 유저라면 기존 로컬스토리지 방식 유지
@@ -525,6 +562,7 @@ async function saveToHistory(fileName, data) {
 
     history.unshift(newItem); // 최신순 정렬을 위해 앞에 추가
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
+    showResults(data);
   }
 
   renderHistoryList();
@@ -605,7 +643,7 @@ async function renderHistoryList() {
       if (item) {
         // 업로드 섹션 숨기고 결과 표시
         uploadSection.classList.add('hidden');
-        showResults(item.data);
+        showResults(item.data, item.id);
       }
     });
   });
