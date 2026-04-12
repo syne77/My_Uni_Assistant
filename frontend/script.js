@@ -1,9 +1,9 @@
-//render url  경로
-const API_BASE = 'https://my-uni-assistant.onrender.com';
-
 // PDF.js worker 설정
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+// API 및 서버 설정
+const API_BASE = 'https://my-uni-assistant.onrender.com';
 
 // Supabase 설정 (백엔드에서 가져와 초기화)
 let _supabase = null;
@@ -140,7 +140,7 @@ const translations = {
       'PDFファイルをここにドラッグするか、クリックして選択してください。',
     extractBtn: 'テキスト 추출 시작',
     statusAnalyzing: '内容を分析しています...',
-    statusExtracting: 'PDFからテキスト를 추출하고 있습니다...',
+    statusExtracting: 'PDFからテキストを抽出しています...',
     statusAIGenerating: 'AI가 내용을 요약하고 퀴즈를 생성하고 있습니다...',
     tabSummary: '📝 要約',
     tabQuiz: '❓ 학습 퀴즈',
@@ -151,8 +151,8 @@ const translations = {
     statReports: '학습 리포트',
     recentFilesTitle: '최근 학습한 파일',
     emptyHistory: '기록이 없습니다.',
-    authMsg: 'ログインして学習データを安全에 보관하세요.',
-    googleLogin: 'Googleでログイン',
+    authMsg: 'ログインして学習 데이터를 안전하게 보관하세요.',
+    googleLogin: 'Google로 로그인',
     errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
     errorExtract: 'PDFからの텍스트 추출에 실패했습니다.',
     errorAI:
@@ -465,7 +465,7 @@ function showResults(data, recordId = null) {
         const selectedAnswer = parseInt(option.value);
         const parentLabel = option.parentElement;
 
-        // 데이터 상태 업데이트
+        // 데이터 상태 업데이트 (메모리상)
         data.quiz[questionIdx].userSelected = selectedAnswer;
 
         const isCorrect = selectedAnswer === correctAnswer;
@@ -494,7 +494,7 @@ function showResults(data, recordId = null) {
         }
         feedback.classList.remove('hidden');
 
-        // 실시간 저장
+        // 실시간 저장 실행
         await updateQuizProgress(data, recordId);
         updateStats();
       });
@@ -502,19 +502,27 @@ function showResults(data, recordId = null) {
   });
 }
 
-// 퀴즈 진행 상황 저장 (개별 답변 시)
+// 퀴즈 진행 상황 실시간 저장 (1문제만 풀어도 호출됨)
 async function updateQuizProgress(data, recordId) {
   if (_supabase && currentUser && recordId) {
-    // DB 업데이트
-    await _supabase
+    // 1. 로그인 상태: Supabase DB 업데이트
+    const { error } = await _supabase
       .from('study_records')
       .update({ quiz_data: data.quiz })
       .eq('id', recordId);
-  } else if (!currentUser) {
-    // 로컬스토리지 업데이트
+
+    if (error) console.error('Progress sync failed:', error.message);
+  } else {
+    // 2. 비로그인 상태: localStorage 업데이트
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    // 현재 세션에서 생성된 최신 항목(또는 ID 매칭 항목) 찾기
-    // 간단히 하기 위해 saveToHistory에서 data를 직접 업데이트하므로 여기선 전체 렌더링 시점에 이미 반영됨
+    // recordId는 로컬에선 생성 시점의 타임스탬프(Date.now())임
+    const index = history.findIndex((h) => String(h.id) === String(recordId));
+
+    if (index !== -1) {
+      history[index].data.quiz = data.quiz;
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistoryList(); // 사이드바 목록 갱신은 필요 시
+    }
   }
 }
 
@@ -523,12 +531,8 @@ async function retryQuiz(data, recordId) {
   // 모든 userSelected 초기화
   data.quiz.forEach((q) => delete q.userSelected);
 
-  if (_supabase && currentUser && recordId) {
-    await _supabase
-      .from('study_records')
-      .update({ quiz_data: data.quiz })
-      .eq('id', recordId);
-  }
+  // 저장소 반영
+  await updateQuizProgress(data, recordId);
 
   // UI 다시 그리기
   showResults(data, recordId);
@@ -553,14 +557,15 @@ async function saveToHistory(fileName, data) {
     if (error) {
       console.error('DB 저장 실패:', error.message);
     } else {
-      // 새로 생성된 recordId를 전달하기 위해 재호출 가능
+      // 새로 생성된 recordId(UUID)를 전달하여 이후 실시간 저장이 가능하게 함
       showResults(data, inserted[0].id);
     }
   } else {
     // 2. 로그인 안 된 유저라면 기존 로컬스토리지 방식 유지
     const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const localId = Date.now(); // 로컬용 recordId 생성
     const newItem = {
-      id: Date.now(),
+      id: localId,
       fileName,
       date: new Date().toLocaleString(
         currentLang === 'ko'
@@ -580,7 +585,9 @@ async function saveToHistory(fileName, data) {
 
     history.unshift(newItem); // 최신순 정렬을 위해 앞에 추가
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
-    showResults(data);
+
+    // 로컬 ID를 recordId로 전달하여 실시간 업데이트 가능하게 함
+    showResults(data, localId);
   }
 
   renderHistoryList();
