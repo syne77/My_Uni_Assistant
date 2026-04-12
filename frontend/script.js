@@ -11,7 +11,7 @@ let currentUser = null;
 
 async function initSupabase() {
   try {
-    const response = await fetch('${API_BASE}/api/config');
+    const response = await fetch(`${API_BASE}/api/config`);
     const config = await response.json();
 
     console.log('Backend Config received:', {
@@ -388,7 +388,7 @@ async function processWithAI(text) {
             ${text.substring(0, 10000)} 
         `;
 
-    const response = await fetch('${API_BASE}/api/analyze', {
+    const response = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
