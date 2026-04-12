@@ -28,7 +28,7 @@ app.get('/api/config', (req, res) => {
   }
   res.json({
     supabaseUrl: SUPABASE_URL || '',
-    supabaseAnonKey: SUPABASE_ANON_KEY || ''
+    supabaseAnonKey: SUPABASE_ANON_KEY || '',
   });
 });
 
@@ -48,7 +48,7 @@ app.post('/api/analyze', async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
