@@ -1,3 +1,6 @@
+//render url  경로
+const API_BASE = 'https://my-uni-assistant.onrender.com';
+
 // PDF.js worker 설정
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -8,24 +11,29 @@ let currentUser = null;
 
 async function initSupabase() {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('${API_BASE}/api/config');
     const config = await response.json();
-    
-    console.log('Backend Config received:', { 
-      hasUrl: !!config.supabaseUrl, 
-      hasKey: !!config.supabaseAnonKey 
+
+    console.log('Backend Config received:', {
+      hasUrl: !!config.supabaseUrl,
+      hasKey: !!config.supabaseAnonKey,
     });
 
     if (config.supabaseUrl && config.supabaseAnonKey) {
-      _supabase = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+      _supabase = supabase.createClient(
+        config.supabaseUrl,
+        config.supabaseAnonKey,
+      );
       console.log('Supabase 초기화 완료');
-      
+
       // 세션 변화 감지
       _supabase.auth.onAuthStateChange((event, session) => {
         handleAuthStateChange(event, session);
       });
     } else {
-      console.error('Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.');
+      console.error(
+        'Supabase 설정 정보가 없습니다. 백엔드 서버의 .env.local 파일을 확인하세요.',
+      );
     }
   } catch (err) {
     console.error('설정 정보를 가져오는데 실패했습니다:', err);
@@ -73,7 +81,8 @@ const LANG_KEY = 'app_language';
 const translations = {
   ko: {
     myPageBtn: '마이 페이지',
-    heroText: '📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를 만들어줍니다!',
+    heroText:
+      '📚 수업 자료를 업로드하면 AI가 핵심 내용을 정리하고 퀴즈를 만들어줍니다!',
     uploadTitle: '📑 PDF 업로드',
     dropZoneText: 'PDF 파일을 여기로 드래그하거나 클릭하여 선택하세요.',
     extractBtn: '텍스트 추출 시작',
@@ -93,11 +102,13 @@ const translations = {
     googleLogin: 'Google로 로그인',
     errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
     errorExtract: 'PDF에서 텍스트를 추출하는 데 실패했습니다.',
-    errorAI: 'AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.',
+    errorAI:
+      'AI 분석에 실패했습니다. 백엔드 서버가 켜져 있는지 확인하거나 잠시 후 다시 시도해주세요.',
   },
   en: {
     myPageBtn: 'My page',
-    heroText: '📚 Upload your study materials and AI will summarize and create quizzes for you!',
+    heroText:
+      '📚 Upload your study materials and AI will summarize and create quizzes for you!',
     uploadTitle: '📑 PDF Upload',
     dropZoneText: 'Drag and drop PDF here or click to select.',
     extractBtn: 'Start Extraction',
@@ -117,13 +128,16 @@ const translations = {
     googleLogin: 'Sign in with Google',
     errorPdf: 'Only PDF files are allowed.',
     errorExtract: 'Failed to extract text from PDF.',
-    errorAI: 'AI analysis failed. Please check the backend server or try again later.',
+    errorAI:
+      'AI analysis failed. Please check the backend server or try again later.',
   },
   jp: {
     myPageBtn: 'マイページ',
-    heroText: '📚 授業資料をアップロードすると、AIが要約とクイズを作成してくれます！',
+    heroText:
+      '📚 授業資料をアップロードすると、AIが要約とクイズを作成してくれます！',
     uploadTitle: '📑 PDFアップロード',
-    dropZoneText: 'PDFファイルをここにドラッグするか、クリックして選択してください。',
+    dropZoneText:
+      'PDFファイルをここにドラッグするか、クリックして選択してください。',
     extractBtn: 'テキスト 추출 시작',
     statusAnalyzing: '内容を分析しています...',
     statusExtracting: 'PDFからテキスト를 추출하고 있습니다...',
@@ -141,8 +155,9 @@ const translations = {
     googleLogin: 'Googleでログイン',
     errorPdf: 'PDF 파일만 업로드할 수 있습니다.',
     errorExtract: 'PDFからの텍스트 추출에 실패했습니다.',
-    errorAI: 'AI分析에 실패했습니다. サーバーを確認するか、後でもう一度お試しください。',
-  }
+    errorAI:
+      'AI分析에 실패했습니다. サーバーを確認するか、後でもう一度お試しください。',
+  },
 };
 
 let currentLang = localStorage.getItem(LANG_KEY) || 'ko';
@@ -222,8 +237,8 @@ async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin
-    }
+      redirectTo: window.location.origin,
+    },
   });
   if (error) console.error('Error logging in:', error.message);
 }
@@ -373,7 +388,7 @@ async function processWithAI(text) {
             ${text.substring(0, 10000)} 
         `;
 
-    const response = await fetch('/api/analyze', {
+    const response = await fetch('${API_BASE}/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
@@ -424,7 +439,7 @@ function showResults(data, recordId = null) {
                   .join('')}
             </div>
             <p class="quiz-feedback ${q.userSelected !== undefined ? '' : 'hidden'}">
-              ${q.userSelected !== undefined ? (q.userSelected === q.answer ? (currentLang === 'ko' ? '✅ 정답입니다!' : currentLang === 'en' ? '✅ Correct!' : '✅ 正解です！') : (currentLang === 'ko' ? `❌ 오답입니다. (정답: ${q.options[q.answer]})` : currentLang === 'en' ? `❌ Wrong. (Answer: ${q.options[q.answer]})` : `❌ 不正解です。(正解: ${q.options[q.answer]})`)) : ''}
+              ${q.userSelected !== undefined ? (q.userSelected === q.answer ? (currentLang === 'ko' ? '✅ 정답입니다!' : currentLang === 'en' ? '✅ Correct!' : '✅ 正解です！') : currentLang === 'ko' ? `❌ 오답입니다. (정답: ${q.options[q.answer]})` : currentLang === 'en' ? `❌ Wrong. (Answer: ${q.options[q.answer]})` : `❌ 不正解です。(正解: ${q.options[q.answer]})`) : ''}
             </p>
         </div>
     `,
@@ -478,7 +493,7 @@ function showResults(data, recordId = null) {
           feedback.style.color = '#721c24';
         }
         feedback.classList.remove('hidden');
-        
+
         // 실시간 저장
         await updateQuizProgress(data, recordId);
         updateStats();
@@ -506,15 +521,15 @@ async function updateQuizProgress(data, recordId) {
 // 퀴즈 다시 풀기
 async function retryQuiz(data, recordId) {
   // 모든 userSelected 초기화
-  data.quiz.forEach(q => delete q.userSelected);
-  
+  data.quiz.forEach((q) => delete q.userSelected);
+
   if (_supabase && currentUser && recordId) {
     await _supabase
       .from('study_records')
       .update({ quiz_data: data.quiz })
       .eq('id', recordId);
   }
-  
+
   // UI 다시 그리기
   showResults(data, recordId);
 }
@@ -523,14 +538,17 @@ async function retryQuiz(data, recordId) {
 async function saveToHistory(fileName, data) {
   // 1. 로그인된 유저라면 Supabase DB에 저장
   if (_supabase && currentUser) {
-    const { data: inserted, error } = await _supabase.from('study_records').insert([
-      {
-        user_id: currentUser.id,
-        file_name: fileName,
-        summary: data.summary,
-        quiz_data: data.quiz,
-      },
-    ]).select();
+    const { data: inserted, error } = await _supabase
+      .from('study_records')
+      .insert([
+        {
+          user_id: currentUser.id,
+          file_name: fileName,
+          summary: data.summary,
+          quiz_data: data.quiz,
+        },
+      ])
+      .select();
 
     if (error) {
       console.error('DB 저장 실패:', error.message);
